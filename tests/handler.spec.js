@@ -1,101 +1,159 @@
+const request = require('superagent')
 const faker = require('faker')
-const generateId = require('../../src/services/id-generator').id
-const winstonLogger = require('../../src/services/winston-logger')
-winstonLogger.configure()
-const request = require('supertest')
+const generateId = () => faker.random.uuid()
 
-describe("Users endpoint", function () {
-
-    afterAll(() => {
-    })
-    beforeAll(() => {
-    })
-    describe("Create Account", function () {
-        const command = {
-            accountNumber: 5652,
-            accountId: generateId(),
-            businessName: faker.name.firstName(),
-        }
+describe("EE", function () {
+    describe("eEEEEEeeee", function () {
 
 
 
-        it('should pass', async (done) => {
-            expect(await handleCreateAccountCommand(command)).toBeTruthy()
-            done()
-        })
-    })
+        // const deleteCommand = {
+        //     reason: 'dsd',
+        //     accountId,
+        // }
+
+        // const reinstateAccount = {
+        //     accountId,
+        // }
 
 
-
-    describe("Reinstate Account", function () {
-        const accountId = generateId()
-        const createCommand = {
-            accountNumber: 5652,
-            accountId,
-            businessName: faker.name.firstName(),
-        }
-
-        const deleteCommand = {
-            reason: 'dsd',
-            accountId,
-        }
-
-        const reinstateAccount = {
-            accountId,
-        }
-
-
-        it('should pass', async (done) => {
-            expect(await handleCreateAccountCommand(createCommand)).toBeTruthy()
-            expect(await handleDeleteAccountCommand(deleteCommand)).toBeTruthy()
-            expect(await handleReinstateAccountCommand(reinstateAccount)).toBeTruthy()
-            done()
-        })
-
-    })
-
-
-
-    describe("Approve Account", function () {
-        
-
-        
-        it('should approve account successfully', async (done) => {
+        it("should add successfully ", function (done) {
+            const accountId = generateId()
             const createCommand = {
-                accountNumber: 5652,
-                accountId: generateId(),
+                accountNumber: 1234,
+                accountId,
+                businessName: faker.name.firstName(),
+            }
+            request.post('http://localhost:3000/createAccount').send(createCommand).end((err, res) => {
+                expect(res.status).toBe(200)
+                expect(res.body).toBe('ok')
+
+                setTimeout(() => {
+                    request.get(`http://localhost:3001/accountDetailsById/${accountId}`).end((err, res) => {
+                        expect(res.body.accountNumber).toBe(createCommand.accountNumber)
+                        expect(res.body.accountId).toBe(createCommand.accountId)
+                        expect(res.body.businessName).toBe(createCommand.businessName)
+                        done()
+                    })
+                }, 2000)
+
+
+
+
+            })
+        })
+
+
+        it("should delete successfully ", function (done) {
+            const accountId = generateId()
+            const createCommand = {
+                accountNumber: 1234,
+                accountId,
+                businessName: faker.name.firstName(),
+            }
+            const deleteCommand = {
+                reason: 'dsd',
+                accountId,
+            }
+            request.post('http://localhost:3000/createAccount').send(createCommand).end((err, res) => {
+                request.post('http://localhost:3000/deleteAccount').send(deleteCommand).end((err, res) => {
+                    expect(res.status).toBe(200)
+                    expect(res.body).toBe('ok')
+
+                    setTimeout(() => {
+                        request.get(`http://localhost:3001/accountDetailsById/${accountId}`).end((err, res) => {
+                            expect(res.status).toBe(400)
+                            expect(res.body.error).toBeTruthy()
+                            done()
+                        })
+                    }, 2000)
+                })
+            })
+        })
+
+
+        
+        it("should not delete a previously deleted account ", function (done) {
+            const accountId = generateId()
+            const createCommand = {
+                accountNumber: 1234,
+                accountId,
+                businessName: faker.name.firstName(),
+            }
+            const deleteCommand = {
+                reason: 'dsd',
+                accountId,
+            }
+            request.post('http://localhost:3000/createAccount').send(createCommand).end((err, res) => {
+                request.post('http://localhost:3000/deleteAccount').send(deleteCommand).end((err, res) => {
+                    request.post('http://localhost:3000/deleteAccount').send(deleteCommand).end((err, res) => {
+                        expect(res.body.error).toBeTruthy()
+                        done()
+                    })
+                })
+            })
+        })
+
+        it("should approve successfully ", function (done) {
+            const accountId = generateId()
+            const createCommand = {
+                accountNumber: 1234,
+                accountId,
                 businessName: faker.name.firstName(),
             }
             const approveAccount = {
-                approvedBy: 'dsd',
-                accountId: createCommand.accountId,
+                approvedBy: 'Name',
+                accountId,
             }
-            expect(await handleCreateAccountCommand(createCommand)).toBeTruthy()
-            expect(await handleApproveAccountCommand(approveAccount)).toBeTruthy()
-            done()
+            request.post('http://localhost:3000/createAccount').send(createCommand).end((err, res) => {
+                request.post('http://localhost:3000/approveAccount').send(approveAccount).end((err, res) => {
+                    expect(res.status).toBe(200)
+                    setTimeout(() => {
+                        request.get(`http://localhost:3001/accountDetailsById/${accountId}`).end((err, res) => {
+                            expect(res.body.isApproved).toBe(true)
+                            expect(res.body.approvedBy).toBe('Name')
+                            expect(res.status).toBe(200)
+                            done()
+                        })
+                    }, 2000)
+                })
+            })
         })
 
-        it('should throw error if approved is blank', async (done) => {
+
+        it("should update address successfully ", function (done) {
+            const accountId = generateId()
             const createCommand = {
-                accountNumber: 5652,
-                accountId: generateId(),
+                accountNumber: 1234,
+                accountId,
                 businessName: faker.name.firstName(),
             }
-            const approveAccount = {
-                approvedBy: 'dsd',
-                accountId: createCommand.accountId,
+            const updateAccountAddressCommand = {
+                accountId, addressLine1: faker.address.streetName(),
+                addressLine2: faker.address.streetName(), city: faker.address.city(), state: faker.address.state(),
+                postcode: 12345, countryName: faker.address.country()
             }
-            expect(await handleCreateAccountCommand(createCommand)).toBeTruthy()
-            approveAccount.approvedBy = ''
-            try {
-                await handleApproveAccountCommand(approveAccount)
-            } catch (e) {
-                expect(e).toBeTruthy()
-                done()
-            }
+            request.post('http://localhost:3000/createAccount').send(createCommand).end((err, res) => {
+                request.post('http://localhost:3000/updateAccountAddress').send(updateAccountAddressCommand).end((err, res) => {
+                    expect(res.status).toBe(200)
+                    setTimeout(() => {
+                        request.get(`http://localhost:3001/accountDetailsById/${accountId}`).end((err, res) => {
+                            expect(res.body.addressLine1).toBe(updateAccountAddressCommand.addressLine1)
+                            expect(res.body.addressLine2).toBe(updateAccountAddressCommand.addressLine2)
+                            expect(res.body.city).toBe(updateAccountAddressCommand.city)
+                            expect(res.body.countryName).toBe(updateAccountAddressCommand.countryName)
+                            expect(res.body.postcode).toBe(updateAccountAddressCommand.postcode)
+                            expect(res.body.state).toBe(updateAccountAddressCommand.state)
+                            expect(res.status).toBe(200)
+                            done()
+                        })
+                    }, 2000)
+                })
+            })
         })
 
+
+
+
     })
-
-
 })
